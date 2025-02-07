@@ -57,7 +57,7 @@ coverage.xml
 db.sqlite3
 staticfiles/
 env/  # Ignore the virtual environment directory
-.env  # Ignore the .env file containing sensitive environment variables
+.env
 celerybeat-schedule
 celerybeat.pid
 
