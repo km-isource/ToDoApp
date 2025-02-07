@@ -1,55 +1,105 @@
 {% extends "base.html" %}
-
 {% block title %}TODO LIST - Home{% endblock %}
-
 {% block content %}
 <div class="row">
     <h3 class="pt-5 text-center">Django ToDo App</h3>
     <div class="row">
         <h4>My Day</h4>
         <p class="text-muted">{% now "jS F Y" %}</p>
-        <div class="col-md-7 col-lg-7" style="height: 450px; overflow: scroll;">
-
+        
+        <div class="col-md-7 col-lg-7" style="max-height: 450px; overflow-y: auto;">
             {% for i in not_complete %}
             <div class="card m-1">
                 <div class="card-body">
-                    {{ i.task }}
+                    <span id="task-text-{{ i.pk }}">{{ i.task }}</span>
+                    <form id="edit-form-{{ i.pk }}" class="edit-form d-none" method="POST">
+                        {% csrf_token %}
+                        <input type="text" name="task" id="edit-input-{{ i.pk }}" value="{{ i.task }}" class="form-control" style="display:inline-block; width: 70%;">
+                        <button type="button" class="btn btn-primary save-edit" data-id="{{ i.pk }}"><i class="fa fa-check"></i> Save</button>
+                    </form>
                     <span style="position: relative; float: right;">
-                        <a class="btn btn-success"><i class="fa fa-check"></i> Mark as Done</a>
-                        <a class="btn btn-danger"><i class="fa fa-trash"></i></a>
-                        <a class="btn btn-primary"><i class="fa fa-pencil"></i></a>
+                        <a href="{% url 'mark_as_done' i.pk %}" class="btn btn-success"><i class="fa fa-check"></i> Done</a>
+                        <a href="{% url 'delete_task' i.pk %}" class="btn btn-danger"><i class="fa fa-trash"></i></a>
+                        <button class="btn btn-primary edit-btn" data-id="{{ i.pk }}"><i class="fa fa-pencil"></i></button>
                     </span>
                 </div>
             </div>
             {% endfor %}
         </div>
-
-        <div class="col-md-5 col-lg-5">
-
+        
+        <div class="col-md-5 col-lg-5" style="max-height: 450px; overflow-y: auto;">
+            {% if complete %}
             <h5>Completed Tasks</h5>
             {% for i in complete %}
             <div class="card m-1">
                 <div class="card-body">
-                    {{ i.task}}
+                    {{ i.task }}
+                    <span style="position: relative; float: right;">
+                        <a href="{% url 'mark_as_not_done' i.pk %}" class="btn btn-danger"><i class="fa fa-times"></i> Undo</a>
+                    </span>
                 </div>
             </div>
             {% endfor %}
-
-        </div>
-    </div>
-    <div class="row">
-        <div class="col-md-6 col-lg-6 p-0" style="position: absolute; bottom: 50px;">
-            <!-- To Do Form -->
-            <form action="{% url 'add_task' %}" method="POST">
-                {% csrf_token %}
-                <div class="form-group">
-                    <span style="display: flex;">
-                        <input type="text" name="task" class="form-control" placeholder="Add a task" name="task">
-                        <button type='submit'class="btn btn-primary" style="width: 200px;"><i class="fa fa-plus"></i> Add</button>
-                    </span>
-                </div>
-            </form>
+            {% endif %}
         </div>
     </div>
 </div>
+
+<!-- Floating Add Button -->
+<div class="add-task-container">
+    <button id="show-add-form" class="btn btn-primary rounded-circle"><i class="fa fa-plus"></i></button>
+</div>
+
+<!-- Task Input Popup -->
+<div id="add-task-popup" class="task-popup d-none">
+    <form action="{% url 'add_task' %}" method="POST" class="task-form" style="display: flex; gap: 10px;">
+        {% csrf_token %}
+        <input type="text" name="task" class="form-control" placeholder="Enter task" style="flex: 1;">
+        <button type="submit" class="btn btn-primary">Add Task</button>
+    </form>
+</div>
+
+
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+$(document).ready(function () {
+    $(".edit-btn").click(function () {
+        var taskId = $(this).data("id");
+        $("#task-text-" + taskId).hide();
+        $("#edit-form-" + taskId).removeClass("d-none");
+        $(this).hide();
+    });
+
+    $(document).on("click", ".save-edit", function () {
+        var taskId = $(this).data("id");
+        var newTaskValue = $("#edit-input-" + taskId).val();
+        $.ajax({
+            url: "/todo/edit-task/" + taskId + "/",
+            method: "POST",
+            data: {
+                task: newTaskValue,
+                csrfmiddlewaretoken: $("input[name=csrfmiddlewaretoken]").val(),
+            },
+            success: function (response) {
+                if (response.status === "success") {
+                    $("#task-text-" + taskId).text(newTaskValue).show();
+                    $("#edit-form-" + taskId).addClass("d-none");
+                    $(".edit-btn[data-id='" + taskId + "']").show();
+                }
+            }
+        });
+    });
+
+    $("#show-add-form").click(function () {
+        $("#add-task-popup").removeClass("d-none");
+    });
+
+    $(document).click(function (event) {
+        if (!$(event.target).closest(".task-popup, #show-add-form").length) {
+            $("#add-task-popup").addClass("d-none");
+        }
+    });
+});
+</script>
 {% endblock %}
